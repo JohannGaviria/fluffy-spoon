@@ -1,0 +1,63 @@
+name: Release
+
+# Opt-in on purpose. This template ships the release pipeline so projects can
+# reuse it, but a fresh clone has no RELEASE_TOKEN, so running it automatically
+# on every push to main would only fail. A project enables it by switching the
+# trigger below to:
+#
+#   workflow_run:
+#     workflows: ["CI Pipeline"]
+#     types: [completed]
+#     branches: [main]
+#
+# and creating the RELEASE_TOKEN secret.
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: release-main
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Checkout full history
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          token: ${{ secrets.RELEASE_TOKEN }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          # No `cache: npm` here: it resolves package-lock.json, which does not
+          # exist yet because npm init runs in the next step. The install below
+          # pins exact versions anyway, so there is nothing to gain from it.
+
+      - name: Install semantic-release
+        run: |
+          npm init -y --silent
+          npm install --no-save \
+            semantic-release@24 \
+            @semantic-release/commit-analyzer@13 \
+            @semantic-release/release-notes-generator@14 \
+            @semantic-release/changelog@6 \
+            @semantic-release/git@10 \
+            @semantic-release/github@11 \
+            @semantic-release/exec@6
+
+      - name: Run semantic-release
+        env:
+          GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+        run: npx semantic-release

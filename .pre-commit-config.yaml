@@ -1,0 +1,25 @@
+repos:
+  # Ruff (lint + auto fix)
+  - repo: local
+    hooks:
+      - id: ruff
+        name: Ruff
+        entry: poetry run ruff check
+        language: system
+        types: [python]
+        args: [--fix]
+
+      - id: ruff-format
+        name: Ruff format
+        entry: poetry run ruff format
+        language: system
+        types: [python]
+
+  # MyPy (type checking)
+  - repo: local
+    hooks:
+      - id: mypy
+        name: MyPy
+        entry: poetry run mypy
+        language: system
+        types: [python]

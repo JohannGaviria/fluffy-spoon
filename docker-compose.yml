@@ -1,0 +1,118 @@
+services:
+  backend-dev:
+    build:
+      context: .
+      target: development
+    env_file:
+      - .env
+    volumes:
+      - ./src:/app/src
+    ports:
+      - "${BACKEND_PORT}:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    profiles:
+      - dev
+
+  postgres:
+    image: postgres:16-alpine
+    env_file:
+      - ./.env
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    restart: unless-stopped
+    profiles:
+      - dev
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    restart: unless-stopped
+    profiles:
+      - dev
+
+
+  backend-test:
+    build:
+      context: .
+      target: testing
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: ${DATABASE_URL_TEST:-postgresql+asyncpg://postgres_test:password@postgres-test:5432/db_test}
+      REDIS_URL: ${REDIS_URL_TEST:-redis://redis-test:6379/0}
+    volumes:
+      - ./src:/app/src
+      - ./tests:/app/tests
+    depends_on:
+      postgres-test:
+        condition: service_healthy
+      redis-test:
+        condition: service_healthy
+    profiles:
+      - test
+
+  postgres-test:
+    image: postgres:16-alpine
+    env_file:
+      - ./.env
+    environment:
+      POSTGRES_USER: ${POSTGRES_TEST_USER:-postgres_test}
+      POSTGRES_PASSWORD: ${POSTGRES_TEST_PASSWORD:-password}
+      POSTGRES_DB: ${POSTGRES_TEST_DB:-db_test}
+    ports:
+      - "${POSTGRES_TEST_PORT:-5433}:5432"
+    volumes:
+      - postgres_test_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    restart: unless-stopped
+    profiles:
+      - test
+
+  redis-test:
+    image: redis:7-alpine
+    ports:
+      - "${REDIS_TEST_PORT:-6380}:6379"
+    volumes:
+      - redis_test_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    restart: unless-stopped
+    profiles:
+      - test
+
+volumes:
+  postgres_data:
+  postgres_test_data:
+  redis_data:
+  redis_test_data:
