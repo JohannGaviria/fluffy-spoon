@@ -1,7 +1,7 @@
 [project]
-name = "python-backend-starter"
+name = "fluffy-spoon"
 version = "1.0.0"
-description = "Reusable Python backend starter template with Docker, PostgreSQL, Redis, testing, and code quality tooling."
+description = "REST API for managing an image gallery with user interactions such as likes, ratings, and comments."
 authors = [
     {name = "JohannGaviria", email = "johannmgr@gmail.com"}
 ]
