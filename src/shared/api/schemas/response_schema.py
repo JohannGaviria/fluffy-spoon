@@ -40,11 +40,11 @@ class ErrorsResponseSchema(BaseModel):
         status (StatusEnum): The status of the response, default is 'error'.
         message (str): A descriptive error message.
         context (dict[str, Any] | None): Additional context information.
-        details (list[str] | None): The individual error messages, when the
+        details (str | None): The individual error messages, when the
             failure maps to more than one of them.
     """
 
     status: StatusEnum = StatusEnum.ERROR
     message: str
     context: dict[str, Any] | None = None
-    details: list[str] | None = None
+    details: str | None = None
