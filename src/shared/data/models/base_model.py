@@ -25,7 +25,7 @@ class BaseModel(Base):
     __abstract__ = True
 
     id: Mapped[UUID] = mapped_column(
-        primary_key=True, unique=True, index=True, default=uuid4()
+        primary_key=True, unique=True, index=True, default=uuid4
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False, index=True
