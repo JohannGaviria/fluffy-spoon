@@ -25,3 +25,10 @@ class InvalidPasswordException(BaseAppException):
         """
         self.error = error
         super().__init__("The password is invalid.")
+
+
+class UserAlreadyExistsException(BaseAppException):
+    """Exception raised when a user already exists with a given email."""
+
+    def __init__(self) -> None:
+        super().__init__("User already exists.")
