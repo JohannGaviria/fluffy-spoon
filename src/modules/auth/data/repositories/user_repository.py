@@ -1,5 +1,5 @@
 from sqlalchemy import select
-from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.modules.auth.data.models.user_model import UserModel
@@ -37,4 +37,35 @@ class UserRepository:
             )
             raise UserRepositoryException(
                 "An error occurred while retrieving user by email address."
+            ) from exc
+
+    async def save(self, name: str, email: str, password_hash: str) -> UserModel:
+        """Save user to database.
+
+        Args:
+            name (str): Name of user.
+            email (str): Email address of user.
+            password_hash (str): Password hash of user.
+
+        Returns:
+            UserModel: User model to save.
+
+        Raises:
+            UserRepositoryException: An error occurred while saving user.
+        """
+        try:
+            user = UserModel(name=name, email=email, password_hash=password_hash)
+            self._session.add(user)
+            await self._session.flush()
+            await self._session.refresh(user)
+            return user
+        except IntegrityError as exc:
+            _logger.error("An error occurred while saving user.", error=str(exc))
+            raise UserRepositoryException(
+                "An error occurred while saving user."
+            ) from exc
+        except SQLAlchemyError as exc:
+            _logger.error("An error occurred while saving user.", error=str(exc))
+            raise UserRepositoryException(
+                "An error occurred while saving user."
             ) from exc
