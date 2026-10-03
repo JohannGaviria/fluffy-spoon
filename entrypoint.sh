@@ -31,6 +31,18 @@ case "$1" in
       -b 0.0.0.0:$BACKEND_PORT \
       --timeout 60
     ;;
+  test)
+    # The suite runs against a real PostgreSQL, so the schema has to be there
+    # before pytest starts: without this, every test that touches a migrated
+    # table fails on `relation "users" does not exist` instead of on its own
+    # assertion. Applied here rather than in the test command so it survives the
+    # per-scope overrides that `make test-unit`, `make test-integration` and
+    # `make test-e2e` pass as arguments.
+    echo ${GREEN} "Running testing stage..." ${NC}
+    run_migrations
+    shift
+    exec "$@"
+    ;;
   *)
     exec "$@"
     ;;

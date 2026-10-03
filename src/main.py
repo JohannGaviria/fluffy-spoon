@@ -7,6 +7,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from src.config import settings
+from src.modules.auth.api.exceptions.auth_exception_handlers import (
+    auth_exception_handlers,
+)
+from src.modules.auth.api.routes.auth_router import router as auth_router
 from src.shared.api.exceptions.exception_handlers import exception_handlers
 from src.shared.api.middleware.correlation_id_middleware import (
     CorrelationIdMiddleware,
@@ -92,7 +96,12 @@ app.add_middleware(CorrelationIdMiddleware)
 
 
 # Includes the exception handlers for the API endpoints
+auth_exception_handlers(app)
 exception_handlers(app)
+
+
+# Includes the routers for the API endpoints
+app.include_router(auth_router)
 
 
 @app.get(

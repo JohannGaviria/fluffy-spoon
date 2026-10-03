@@ -56,6 +56,10 @@ cp .env.example .env
 | `BACKEND_WORKERS`        | Number of Gunicorn worker processes (production stage).                      | `4`                                                                                                |
 | `CORS_ALLOW_ORIGINS`     | Allowed origins for CORS requests.                                           | `http://localhost:8000`                                                                            |
 | `CORS_ALLOW_CREDENTIALS` | Allows credentials to be included in CORS requests.                          | `True` / `False`                                                                                   |
+| **Argon2**               | Password hashing parameters consumed by the Argon2 adapter.                  |                                                                                                    |
+| `ARGON2_TIME_COST`       | Number of passes over the memory on every hash.                              | `3`                                                                                                |
+| `ARGON2_MEMORY_COST`     | Memory used on every hash, in KiB.                                           | `65536`                                                                                            |
+| `ARGON2_PARALLELISM`     | Number of parallel lanes used on every hash.                                 | `4`                                                                                                |
 | **PostgreSQL (dev)**     | Consumed by the `postgres` container.                                        |                                                                                                    |
 | `POSTGRES_USER`          | User created by the `postgres` container.                                    | `postgres`                                                                                         |
 | `POSTGRES_PASSWORD`      | Password of that user. Required, the image refuses to initialize without it. | `password`                                                                                         |
