@@ -22,6 +22,11 @@ def exception_handlers(app: FastAPI) -> None:
         FastAPI serves the full traceback itself and this handler is never
         reached, so adding one would be dead code.
 
+        Neither the message nor the traceback is logged, for the same reason the
+        previous handler avoids them: an unhandled exception can be a SQLAlchemy
+        error, and `str()` of one carries the bound parameters of the statement,
+        which for a write is the password hash. Only the class is recorded.
+
         Args:
             request (Request): The request object.
             exc (Exception): The exception.
@@ -34,8 +39,6 @@ def exception_handlers(app: FastAPI) -> None:
             request_method=request.method,
             request_path=request.url.path,
             exception_type=type(exc).__name__,
-            exception_message=str(exc),
-            exc_info=True,
         )
 
         return JSONResponse(

@@ -56,13 +56,16 @@ def register_user_exception_handlers(app: FastAPI) -> None:
         Returns:
             JSONResponse: The JSON response with the appropriate status code and message.
         """
+        # No `exc_info` on purpose. These exceptions are raised with `from exc` over a
+        # SQLAlchemy error, so rendering the traceback would render that cause too,
+        # and its message carries the bound parameters of the statement, the password
+        # hash among them. The repository already logged the SQLSTATE.
         _logger.error(
             "User repository exception occurred while processing request.",
             request_method=request.method,
             request_path=request.url.path,
-            exception_message=exc,
+            exception_type=type(exc).__name__,
             error=exc.error,
-            exc_info=True,
         )
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

@@ -3,10 +3,47 @@ from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.modules.auth.data.models.user_model import UserModel
-from src.modules.auth.exceptions.user_exception import UserRepositoryException
+from src.modules.auth.exceptions.user_exception import (
+    UserAlreadyExistsException,
+    UserRepositoryException,
+)
 from src.shared.infrastructure.logging.structlog_logger import StructlogLogger
 
 _logger = StructlogLogger(__name__)
+
+# PostgreSQL `unique_violation`. The email is the only unique constraint on
+# `users`, so this code identifies the conflict that registration has to report
+# as a conflict. Reading it off the driver error instead of importing the driver
+# keeps the repository agnostic to whichever asyncpg exposes the exception.
+_UNIQUE_VIOLATION_SQLSTATE = "23505"
+
+
+def _sqlstate(exc: SQLAlchemyError) -> str | None:
+    """Read the PostgreSQL error code off the driver exception.
+
+    Not every `SQLAlchemyError` carries a driver exception: the state errors the
+    session raises on its own, such as `PendingRollbackError`, have no `orig` at
+    all, so the lookup has to tolerate its absence.
+
+    Args:
+        exc (SQLAlchemyError): The error raised by the database.
+
+    Returns:
+        str | None: The SQLSTATE code, or None when there is none to read.
+    """
+    return getattr(getattr(exc, "orig", None), "sqlstate", None)
+
+
+def _is_unique_violation(exc: IntegrityError) -> bool:
+    """Check whether an integrity error was raised by a unique constraint.
+
+    Args:
+        exc (IntegrityError): The integrity error raised by the database.
+
+    Returns:
+        bool: True when the underlying driver error is a unique violation.
+    """
+    return _sqlstate(exc) == _UNIQUE_VIOLATION_SQLSTATE
 
 
 class UserRepository:
@@ -30,9 +67,14 @@ class UserRepository:
             result = await self._session.execute(stmt)
             return result.scalar_one_or_none()
         except SQLAlchemyError as exc:
+            # The driver message is never logged: `str()` of a SQLAlchemy error
+            # renders the bound parameters of the statement, which for `save` is
+            # the password hash. The SQLSTATE and the error class are what identify
+            # the failure, and neither is a secret.
             _logger.error(
                 "An error occurred while retrieving user by email address.",
-                error=str(exc),
+                sqlstate=_sqlstate(exc),
+                error_type=type(exc).__name__,
                 email=email,
             )
             raise UserRepositoryException(
@@ -51,7 +93,10 @@ class UserRepository:
             UserModel: User model to save.
 
         Raises:
-            UserRepositoryException: An error occurred while saving user.
+            UserAlreadyExistsException: The email is already taken. A concurrent
+                registration can win the race after the caller checked, and the
+                unique constraint is what reports it.
+            UserRepositoryException: Any other error occurred while saving user.
         """
         try:
             user = UserModel(name=name, email=email, password_hash=password_hash)
@@ -60,12 +105,22 @@ class UserRepository:
             await self._session.refresh(user)
             return user
         except IntegrityError as exc:
-            _logger.error("An error occurred while saving user.", error=str(exc))
+            _logger.error(
+                "An error occurred while saving user.",
+                sqlstate=_sqlstate(exc),
+                error_type=type(exc).__name__,
+            )
+            if _is_unique_violation(exc):
+                raise UserAlreadyExistsException() from exc
             raise UserRepositoryException(
                 "An error occurred while saving user."
             ) from exc
         except SQLAlchemyError as exc:
-            _logger.error("An error occurred while saving user.", error=str(exc))
+            _logger.error(
+                "An error occurred while saving user.",
+                sqlstate=_sqlstate(exc),
+                error_type=type(exc).__name__,
+            )
             raise UserRepositoryException(
                 "An error occurred while saving user."
             ) from exc
