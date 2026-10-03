@@ -62,6 +62,13 @@ services:
     environment:
       DATABASE_URL: ${DATABASE_URL_TEST:-postgresql+asyncpg://postgres_test:password@postgres-test:5432/db_test}
       REDIS_URL: ${REDIS_URL_TEST:-redis://redis-test:6379/0}
+      # Argon2 at the configured strength (64 MiB, 3 iterations) costs roughly
+      # 100 ms per hash, which dominates the runtime of the registration tests.
+      # These are the weakest parameters argon2-cffi accepts; they keep the
+      # encoding and the verification path identical, only cheaper.
+      ARGON2_TIME_COST: 1
+      ARGON2_MEMORY_COST: 8
+      ARGON2_PARALLELISM: 1
     volumes:
       - ./src:/app/src
       - ./tests:/app/tests

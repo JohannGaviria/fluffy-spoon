@@ -16,6 +16,9 @@ REQUIRED_SAMPLE_VALUES: dict[str, Any] = {
     "BACKEND_WORKERS": 4,
     "CORS_ALLOW_ORIGINS": "http://localhost:8000",
     "CORS_ALLOW_CREDENTIALS": True,
+    "ARGON2_TIME_COST": 3,
+    "ARGON2_MEMORY_COST": 65536,
+    "ARGON2_PARALLELISM": 4,
     "POSTGRES_USER": "postgres",
     "POSTGRES_PASSWORD": "password",
     "POSTGRES_DB": "db",
@@ -104,3 +107,35 @@ class TestSettingsParsing:
     def test_should_reject_an_unknown_environment(self) -> None:
         with pytest.raises(ValueError, match="ENVIRONMENT"):
             build_settings(ENVIRONMENT="stagingg")
+
+
+class TestArgon2Settings:
+    def test_should_read_the_cost_parameters_from_the_environment(self) -> None:
+        settings = build_settings(
+            ARGON2_TIME_COST=2,
+            ARGON2_MEMORY_COST=32768,
+            ARGON2_PARALLELISM=8,
+        )
+
+        assert settings.ARGON2_TIME_COST == 2
+        assert settings.ARGON2_MEMORY_COST == 32768
+        assert settings.ARGON2_PARALLELISM == 8
+
+    @pytest.mark.parametrize(
+        ("field", "value"),
+        [
+            ("ARGON2_TIME_COST", 0),
+            ("ARGON2_MEMORY_COST", 7),
+            ("ARGON2_PARALLELISM", 0),
+        ],
+    )
+    def test_should_not_constrain_the_parameters_the_algorithm_rejects(
+        self, field: str, value: int
+    ) -> None:
+        # The settings are plain integers, so an unusable cost reaches
+        # argon2-cffi and fails on the first registration instead of at
+        # startup. Pinned here so adding a bound is a visible decision: this
+        # test fails and names the field that would gain the constraint.
+        settings = build_settings(**{field: value})
+
+        assert getattr(settings, field) == value

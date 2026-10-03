@@ -1,11 +1,7 @@
-from collections.abc import AsyncIterator
-
 import pytest
-from asgi_lifespan import LifespanManager
-from httpx import ASGITransport, AsyncClient
+from httpx import AsyncClient
 
 from src.config import settings
-from src.main import app
 from src.shared.data.database import database
 from src.shared.data.redis_client import redis_client
 
@@ -13,26 +9,6 @@ from src.shared.data.redis_client import redis_client
 # infrastructure as the integration suite. The root conftest skips them when it
 # is not reachable, which keeps a bare `pytest` run green on the host.
 pytestmark = [pytest.mark.e2e, pytest.mark.db]
-
-
-@pytest.fixture
-async def client() -> AsyncIterator[AsyncClient]:
-    """Provide an HTTP client bound to the ASGI app, lifespan included.
-
-    `ASGITransport` on its own does not run the ASGI lifespan, so the manager
-    is what makes startup and shutdown actually execute and the backing
-    services get connected.
-
-    Yields:
-        AsyncClient: A client whose requests run through the full application.
-    """
-    async with LifespanManager(app):
-        transport = ASGITransport(app=app)
-        async with AsyncClient(
-            transport=transport,
-            base_url="http://test",
-        ) as http_client:
-            yield http_client
 
 
 class TestRoot:

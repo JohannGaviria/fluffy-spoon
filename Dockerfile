@@ -60,6 +60,11 @@ RUN poetry install --no-root --with test
 
 COPY . .
 
+# The entrypoint owns the migration step for this stage, so it is baked in here
+# rather than in CMD: every `docker compose run backend-test <cmd>` invocation
+# overrides CMD but keeps the ENTRYPOINT arguments.
+ENTRYPOINT ["entrypoint.sh", "test"]
+
 CMD ["poetry", "run", "pytest", "tests"]
 
 # =============================================================================
